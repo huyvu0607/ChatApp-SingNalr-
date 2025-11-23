@@ -1,0 +1,2110 @@
+﻿@{
+    ViewData["Title"] = "Cuộc hội thoại";
+
+    var conversation = ViewBag.Conversation as ChatApp.Models.Conversation;
+    var messages = ViewBag.Messages as List<dynamic>;
+    var currentUserId = ViewBag.CurrentUserId;
+    var isAdmin = ViewBag.IsAdmin == true;
+
+    // Tính toán display name + avatar (giống như cũ)
+    string displayName = conversation.ConversationName ?? "";
+    string avatarUrl = "/images/default-avatar.png";
+    bool isOnline = false;
+
+    if (conversation.IsGroup != true && conversation.ConversationMembers != null)
+    {
+        var other = conversation.ConversationMembers
+            .FirstOrDefault(m => m.UserId != currentUserId && m.DeletedAt == null);
+        if (other?.User != null)
+        {
+            displayName = other.User.FullName ?? other.User.Username ?? "Người dùng";
+            avatarUrl = other.User.Avatar ?? "/images/default-avatar.png";
+            isOnline = other.User.IsOnline == true;
+        }
+    }
+
+    // Truyền để sidebar highlight đúng
+    ViewBag.ActiveConversationId = conversation.ConversationId;
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/conversations.css" />
+    <style>
+        /* Enhanced Search Results */
+        .search-results {
+            display: none;
+            max-height: calc(100vh - 250px);
+            overflow-y: auto;
+            border-bottom: 1px solid #e5e7eb;
+            background: #fff;
+        }
+
+        .search-result-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+            .search-result-item:hover {
+                background: #f9fafb;
+            }
+
+            .search-result-item:last-child {
+                border-bottom: none;
+            }
+
+        .search-result-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            margin-right: 12px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+            .search-result-avatar img {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                object-fit: cover;
+            }
+
+            .search-result-avatar .default-avatar {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #667eea 0%, #7dc1f2 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 18px;
+                font-weight: 600;
+            }
+
+        .search-result-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .search-result-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .search-result-email {
+            font-size: 12px;
+            color: #6b7280;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .search-result-action {
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
+
+        .add-friend-btn {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+            .add-friend-btn.primary {
+                background: #0068ff;
+                color: white;
+            }
+
+                .add-friend-btn.primary:hover {
+                    background: #0052cc;
+                }
+
+            .add-friend-btn.secondary {
+                background: #e5e7eb;
+                color: #6b7280;
+            }
+
+                .add-friend-btn.secondary:hover {
+                    background: #d1d5db;
+                }
+
+            .add-friend-btn.success {
+                background: #10b981;
+                color: white;
+            }
+
+                .add-friend-btn.success:hover {
+                    background: #059669;
+                }
+
+            .add-friend-btn.warning {
+                background: #f59e0b;
+                color: white;
+            }
+
+                .add-friend-btn.warning:hover {
+                    background: #d97706;
+                }
+
+            .add-friend-btn:disabled {
+                cursor: not-allowed;
+                opacity: 0.6;
+            }
+        .chat-container {
+            display: flex;
+            height: calc(100vh - 60px);
+            background: #fff;
+        }
+
+        /* ===== CONVERSATIONS LIST (LEFT) - Same as Index ===== */
+        .conversations-panel {
+            width: 340px;
+            border-right: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+        }
+
+        .conversations-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+            .conversations-header h2 {
+                font-size: 20px;
+                font-weight: 600;
+                color: #1f2937;
+                margin: 0;
+            }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-action-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: #f3f4f6;
+            color: #6b7280;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+            .header-action-btn:hover {
+                background: #e5e7eb;
+                color: #1f2937;
+            }
+
+        .conversations-search {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+            .search-box input {
+                width: 100%;
+                padding: 8px 12px 8px 36px;
+                border: 1px solid #e5e7eb;
+                border-radius: 20px;
+                font-size: 14px;
+                outline: none;
+                transition: all 0.2s;
+            }
+
+                .search-box input:focus {
+                    border-color: #0068ff;
+                    background: #f8faff;
+                }
+
+            .search-box i {
+                position: absolute;
+                left: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: #9ca3af;
+                font-size: 14px;
+            }
+
+        .conversations-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* Conversation Item Styles */
+        .conversation-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid #f3f4f6;
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+        }
+
+            .conversation-item:hover {
+                background: #f9fafb;
+            }
+
+            .conversation-item.active {
+                background: #e0efff;
+            }
+
+            .conversation-item.pinned {
+                background: #fef3c7;
+            }
+
+                .conversation-item.pinned:hover {
+                    background: #fde68a;
+                }
+
+        .conversation-avatar {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            margin-right: 12px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+            .conversation-avatar img {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                object-fit: cover;
+            }
+
+            .conversation-avatar .default-avatar {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #667eea 0%, #7dc1f2 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 20px;
+                font-weight: 600;
+            }
+
+        .online-indicator {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 12px;
+            height: 12px;
+            background: #10b981;
+            border: 2px solid #fff;
+            border-radius: 50%;
+        }
+
+        .conversation-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .conversation-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .conversation-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1f2937;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+
+        .conversation-time {
+            font-size: 12px;
+            color: #9ca3af;
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
+
+        .conversation-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .last-message {
+            font-size: 13px;
+            color: #6b7280;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+
+            .last-message.unread {
+                color: #1f2937;
+                font-weight: 600;
+            }
+
+        .unread-badge {
+            background: #ef4444;
+            color: white;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .pin-icon {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            color: #f59e0b;
+            font-size: 12px;
+        }
+
+        /* ===== CHAT PANEL (CENTER) ===== */
+        .chat-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #f9fafb;
+        }
+
+        /* Chat Header */
+        .chat-header {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            background: #fff;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .chat-header-back {
+            display: none;
+            margin-right: 12px;
+            font-size: 20px;
+            color: #6b7280;
+            cursor: pointer;
+        }
+
+        .chat-header-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 12px;
+            position: relative;
+        }
+
+            .chat-header-avatar img {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                object-fit: cover;
+            }
+
+            .chat-header-avatar .default-avatar {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #667eea 0%, #7dc1f2 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 16px;
+                font-weight: 600;
+            }
+
+        .chat-header-info {
+            flex: 1;
+        }
+
+        .chat-header-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 2px;
+        }
+
+        .chat-header-status {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+            .chat-header-status.online {
+                color: #10b981;
+            }
+
+        .chat-header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-header-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: #f3f4f6;
+            color: #6b7280;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+            .chat-header-btn:hover {
+                background: #e5e7eb;
+                color: #1f2937;
+            }
+
+        /* Messages Area */
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message-date-divider {
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+        }
+
+            .message-date-divider span {
+                background: #e5e7eb;
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 12px;
+                color: #6b7280;
+                font-weight: 500;
+            }
+
+        .message-wrapper {
+            display: flex;
+            margin-bottom: 12px;
+            align-items: flex-end;
+        }
+
+            .message-wrapper.sent {
+                justify-content: flex-end;
+            }
+
+            .message-wrapper.received {
+                justify-content: flex-start;
+            }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+            .message-avatar img {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                object-fit: cover;
+            }
+
+        .message-content {
+            max-width: 60%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message-sender-name {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 4px;
+            margin-left: 12px;
+        }
+
+        .message-bubble {
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .message-wrapper.sent .message-bubble {
+            background: #0068ff;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-wrapper.received .message-bubble {
+            background: #e5e7eb;
+            color: #1f2937;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-bubble.edited::after {
+            content: '(đã chỉnh sửa)';
+            font-size: 11px;
+            opacity: 0.7;
+            margin-left: 6px;
+        }
+
+        .message-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        .message-wrapper.sent .message-meta {
+            justify-content: flex-end;
+        }
+
+        .message-reactions {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+
+        .reaction-item {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 2px 6px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+            .reaction-item:hover {
+                background: #f3f4f6;
+            }
+
+            .reaction-item.active {
+                background: #e0efff;
+                border-color: #0068ff;
+            }
+
+        .message-actions {
+            display: none;
+            position: absolute;
+            top: -30px;
+            right: 0;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 20px;
+            padding: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            gap: 4px;
+        }
+
+        .message-wrapper:hover .message-actions {
+            display: flex;
+        }
+
+        .message-action-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            color: #6b7280;
+            cursor: pointer;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+            .message-action-btn:hover {
+                background: #f3f4f6;
+                color: #1f2937;
+            }
+
+        /* Pinned Message Banner */
+        .pinned-message-banner {
+            background: #fef3c7;
+            padding: 10px 20px;
+            border-bottom: 1px solid #fde68a;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+            .pinned-message-banner i {
+                color: #f59e0b;
+                margin-right: 8px;
+            }
+
+        .pinned-message-text {
+            flex: 1;
+            font-size: 13px;
+            color: #92400e;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Chat Input */
+        .chat-input {
+            padding: 16px 20px;
+            background: #fff;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .chat-input-container {
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+        }
+
+        .input-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-action-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            color: #6b7280;
+            cursor: pointer;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 18px;
+        }
+
+            .input-action-btn:hover {
+                background: #f3f4f6;
+                color: #0068ff;
+            }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .chat-input-field {
+            width: 100%;
+            padding: 10px 40px 10px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 20px;
+            font-size: 14px;
+            resize: none;
+            max-height: 120px;
+            outline: none;
+            font-family: inherit;
+        }
+
+            .chat-input-field:focus {
+                border-color: #0068ff;
+            }
+
+        .emoji-picker-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: #6b7280;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 6px;
+        }
+
+            .emoji-picker-btn:hover {
+                color: #0068ff;
+            }
+
+        .send-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: #0068ff;
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+            .send-btn:hover {
+                background: #0052cc;
+            }
+
+            .send-btn:disabled {
+                background: #d1d5db;
+                cursor: not-allowed;
+            }
+
+        /* ===== INFO PANEL (RIGHT) ===== */
+        .info-panel {
+            width: 340px;
+            border-left: 1px solid #e5e7eb;
+            background: #fff;
+            overflow-y: auto;
+            display: none;
+        }
+
+            .info-panel.show {
+                display: block;
+            }
+
+        .info-header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .info-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 12px;
+        }
+
+            .info-avatar img {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                object-fit: cover;
+            }
+
+        .info-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .info-status {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .info-actions {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .info-action-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+
+            .info-action-btn i {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                background: #f3f4f6;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 16px;
+            }
+
+            .info-action-btn:hover {
+                color: #0068ff;
+            }
+
+                .info-action-btn:hover i {
+                    background: #e0efff;
+                }
+
+            .info-action-btn span {
+                font-size: 12px;
+            }
+
+        .info-section {
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .info-section-header {
+            padding: 16px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+            .info-item:hover {
+                background: #f9fafb;
+            }
+
+            .info-item i {
+                width: 40px;
+                font-size: 18px;
+                color: #6b7280;
+            }
+
+        .info-item-content {
+            flex: 1;
+        }
+
+        .info-item-title {
+            font-size: 14px;
+            color: #1f2937;
+            margin-bottom: 2px;
+        }
+
+        .info-item-subtitle {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        /* Responsive */
+        @@media (max-width: 1200px) {
+            .info-panel {
+                position: absolute;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                z-index: 100;
+                box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+            }
+        }
+
+        @@media (max-width: 768px) {
+            .conversations-panel {
+                display: none;
+            }
+
+            .chat-header-back {
+                display: block;
+            }
+        }
+
+        /* Pulse animation for typing */
+        @@keyframes pulse {
+            0%, 100% {
+                opacity: 0.3;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .message-wrapper.highlight .message-bubble {
+            animation: highlight-flash 1s ease-in-out;
+        }
+
+        @@keyframes highlight-flash {
+            0%, 100% {
+                background-color: inherit;
+            }
+
+            50% {
+                background-color: #fef3c7;
+            }
+        }
+    </style>
+}
+
+
+<div class="chat-container">
+    <!-- Left: Conversations List -->
+    @await Html.PartialAsync("_ConversationsPanel")
+
+    <!-- Center: Chat Area -->
+    <div class="chat-panel">
+        <!-- Chat Header -->
+        <div class="chat-header">
+            <a href="@Url.Action("Index", "Chat")" class="chat-header-back">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+
+            <div class="chat-header-avatar">
+                @if (conversation.IsGroup == true)
+                {
+                    <!-- ✅ Avatar cho nhóm -->
+                    <div class="default-avatar" style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);">
+                        <i class="fas fa-users"></i>
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(avatarUrl) && avatarUrl != "/images/default-avatar.png")
+                {
+                    <img src="@avatarUrl" alt="@displayName">
+                }
+                else
+                {
+                    <div class="default-avatar">
+                        @displayName.Substring(0, 1).ToUpper()
+                    </div>
+                }
+            </div>
+
+            <div class="chat-header-info">
+                <div class="chat-header-name">@displayName</div>
+                <div class="chat-header-status @(isOnline ? "online" : "")">
+                    @if (conversation.IsGroup == true)
+                    {
+                        <span>@conversation.ConversationMembers.Count(m => m.DeletedAt == null) thành viên</span>
+                    }
+                    else
+                    {
+                        <span>@(isOnline ? "Đang hoạt động" : "Không hoạt động")</span>
+                    }
+                </div>
+            </div>
+
+            <div class="chat-header-actions">
+                <button class="chat-header-btn" id="callBtn" title="Gọi điện">
+                    <i class="fas fa-phone"></i>
+                </button>
+                <button class="chat-header-btn" id="videoCallBtn" title="Gọi video">
+                    <i class="fas fa-video"></i>
+                </button>
+                <button class="chat-header-btn" id="searchMsgBtn" title="Tìm kiếm">
+                    <i class="fas fa-search"></i>
+                </button>
+                <button class="chat-header-btn" id="toggleInfoBtn" title="Thông tin">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Pinned Messages Banner -->
+        @{
+            var pinnedMessages = messages?.Where(m => m.IsPinned == true).ToList();
+            if (pinnedMessages != null && pinnedMessages.Count > 0)
+            {
+                var pinnedMsg = pinnedMessages.First();
+                <div class="pinned-message-banner" onclick="scrollToMessage(@pinnedMsg.MessageId)">
+                    <div>
+                        <i class="fas fa-thumbtack"></i>
+                        <span class="pinned-message-text">@pinnedMsg.MessageText</span>
+                    </div>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+            }
+        }
+
+        <!-- Messages Area -->
+        <div class="messages-area" id="messagesArea">
+            @if (messages != null && messages.Count > 0)
+            {
+                DateTime? lastDate = null;
+
+                foreach (var msg in messages)
+                {
+                    var msgDate = ((DateTime)msg.SentAt).Date;
+
+                    // Date divider
+                    if (lastDate == null || msgDate != lastDate)
+                    {
+                        <div class="message-date-divider">
+                            <span>
+                                @if (msgDate == DateTime.Today)
+                                {
+                                    @:Hôm nay
+                                }
+                                else if (msgDate == DateTime.Today.AddDays(-1))
+                                {
+                                    @:Hôm qua
+                                }
+                                else
+                                {
+                                    @msgDate.ToString("dd/MM/yyyy")
+                                }
+                            </span>
+                        </div>
+                        lastDate = msgDate;
+                    }
+
+                    var isSent = msg.Sender.UserId == currentUserId;
+                    var senderName = msg.Sender.FullName ?? msg.Sender.Username ?? "Unknown";
+                    var senderAvatar = msg.Sender.Avatar ?? "/images/default-avatar.png";
+                    var sentTime = ((DateTime)msg.SentAt).ToString("HH:mm");
+
+                    <div class="message-wrapper @(isSent ? "sent" : "received")" data-message-id="@msg.MessageId">
+                        @* ✅ FIX: Hiển thị avatar cho messages từ người khác trong nhóm *@
+                        @if (!isSent && conversation.IsGroup == true)
+                        {
+                            <div class="message-avatar">
+                                @* ✅ QUAN TRỌNG: Kiểm tra avatar có hợp lệ không *@
+                                @if (!string.IsNullOrEmpty(senderAvatar) &&
+                               senderAvatar != "/images/default-avatar.png" &&
+                               !senderAvatar.Trim().Equals(""))
+                                {
+                                    <img src="@senderAvatar" alt="@senderName">
+                                }
+                                else
+                                {
+                                    @* Default avatar với chữ cái đầu *@
+                                    <div style="width: 32px; height: 32px; border-radius: 50%;
+                                        background: linear-gradient(135deg, #667eea 0%, #7dc1f2 100%);
+                                        display: flex; align-items: center; justify-content: center;
+                                        color: white; font-size: 14px; font-weight: 600;">
+                                        @senderName.Substring(0, 1).ToUpper()
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <div class="message-content">
+                            @if (!isSent && conversation.IsGroup == true)
+                            {
+                                <div class="message-sender-name">@senderName</div>
+                            }
+
+                            <div class="message-bubble @(msg.IsEdited ? "edited" : "")">
+                                @if (msg.IsPinned == true)
+                                {
+                                    <i class="fas fa-thumbtack" style="margin-right: 6px; font-size: 12px;"></i>
+                                }
+                                @msg.MessageText
+
+                                @if (isSent)
+                                {
+                                    <div class="message-actions">
+                                        <button class="message-action-btn" onclick="reactMessageViaSignalR(@msg.MessageId, '👍')">
+                                            <i class="far fa-thumbs-up"></i>
+                                        </button>
+                                        <button class="message-action-btn" onclick="editMessageViaSignalR(@msg.MessageId)">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="message-action-btn" onclick="deleteMessageViaSignalR(@msg.MessageId)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="message-meta">
+                                <span>@sentTime</span>
+                                @if (isSent)
+                                {
+                                    <i class="fas fa-check-double" style="color: #0068ff;"></i>
+                                }
+                            </div>
+
+                            @* ✅ Reactions container - sẽ được load qua JavaScript *@
+                            <div class="message-reactions" data-message-id="@msg.MessageId"></div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div style="text-align: center; padding: 40px; color: #9ca3af;">
+                    <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 12px; color: #d1d5db;"></i>
+                    <p>Chưa có tin nhắn nào</p>
+                    <p style="font-size: 13px; margin-top: 8px;">Hãy bắt đầu cuộc trò chuyện!</p>
+                </div>
+            }
+        </div>
+
+        <!-- Chat Input -->
+        <div class="chat-input">
+            <form id="messageForm" class="chat-input-container">
+                <div class="input-actions">
+                    <button type="button" class="input-action-btn" id="attachImageBtn" title="Gửi ảnh">
+                        <i class="fas fa-image"></i>
+                    </button>
+                    <button type="button" class="input-action-btn" id="attachFileBtn" title="Gửi file">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    <button type="button" class="input-action-btn" id="voiceBtn" title="Ghi âm">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                </div>
+
+                <div class="input-wrapper">
+                    <textarea id="messageInput"
+                              class="chat-input-field"
+                              placeholder="Nhập tin nhắn..."
+                              rows="1"></textarea>
+                    <button type="button" class="emoji-picker-btn" id="emojiBtn">
+                        <i class="far fa-smile"></i>
+                    </button>
+                </div>
+
+                <button type="submit" class="send-btn" id="sendBtn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+
+                <input type="hidden" id="conversationId" value="@conversation.ConversationId">
+            </form>
+        </div>
+    </div>
+
+    <!-- Right: Info Panel -->
+    <div class="info-panel" id="infoPanel">
+        <div class="info-header">
+            <div class="info-avatar">
+                @if (conversation.IsGroup == true)
+                {
+                    <!-- ✅ Avatar cho nhóm trong info panel -->
+                    <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 32px;">
+                        <i class="fas fa-users"></i>
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(avatarUrl) && avatarUrl != "/images/default-avatar.png")
+                {
+                    <img src="@avatarUrl" alt="@displayName">
+                }
+                else
+                {
+                    <div class="default-avatar" style="width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #7dc1f2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 32px; font-weight: 600;">
+                        @displayName.Substring(0, 1).ToUpper()
+                    </div>
+                }
+            </div>
+            <div class="info-name">@displayName</div>
+            <div class="info-status">
+                @if (conversation.IsGroup == true)
+                {
+                    <span>Nhóm · @conversation.ConversationMembers.Count(m => m.DeletedAt == null) thành viên</span>
+                }
+                else
+                {
+                    <span>@(isOnline ? "Đang hoạt động" : "Không hoạt động")</span>
+                }
+            </div>
+
+            <div class="info-actions">
+                <button class="info-action-btn" onclick="muteConversation(@conversation.ConversationId)">
+                    <i class="fas fa-bell-slash"></i>
+                    <span>Tắt thông báo</span>
+                </button>
+                <button class="info-action-btn" onclick="pinConversation(@conversation.ConversationId)">
+                    <i class="fas fa-thumbtack"></i>
+                    <span>Ghim</span>
+                </button>
+                <button class="info-action-btn">
+                    <i class="fas fa-search"></i>
+                    <span>Tìm kiếm</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-section-header">Tuỳ chỉnh</div>
+            <div class="info-item" onclick="archiveConversation(@conversation.ConversationId)">
+                <i class="fas fa-archive"></i>
+                <div class="info-item-content">
+                    <div class="info-item-title">Lưu trữ hội thoại</div>
+                </div>
+            </div>
+            <div class="info-item" onclick="deleteConversation(@conversation.ConversationId)">
+                <i class="fas fa-trash" style="color: #ef4444;"></i>
+                <div class="info-item-content">
+                    <div class="info-item-title" style="color: #ef4444;">Xóa hội thoại</div>
+                </div>
+            </div>
+        </div>
+
+        @if (conversation.IsGroup == true)
+        {
+            <div class="info-section">
+                <div class="info-section-header">Thành viên (@conversation.ConversationMembers.Count(m => m.DeletedAt == null))</div>
+                @foreach (var member in conversation.ConversationMembers.Where(m => m.DeletedAt == null))
+                {
+                    var memberAvatar = member.User?.Avatar ?? "/images/default-avatar.png";
+                    var memberName = member.User?.FullName ?? member.User?.Username ?? "Unknown";
+                    var memberIsAdmin = member.IsAdmin ?? false;
+
+                    <div class="info-item">
+                        <div class="conversation-avatar" style="width: 40px; height: 40px; margin-right: 12px;">
+                            @if (!string.IsNullOrEmpty(memberAvatar) && memberAvatar != "/images/default-avatar.png")
+                            {
+                                <img src="@memberAvatar" alt="@memberName">
+                            }
+                            else
+                            {
+                                <div class="default-avatar">
+                                    @memberName.Substring(0, 1).ToUpper()
+                                </div>
+                            }
+                        </div>
+                        <div class="info-item-content">
+                            <div class="info-item-title">
+                                @memberName
+                                @if (memberIsAdmin)
+                                {
+                                    <span style="color: #f59e0b; font-size: 11px; margin-left: 6px;">Nhóm Trường</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+
+    <!-- ✅ IMPORT SHARED SEARCH FUNCTIONS -->
+    <script src="~/js/chat-search.js"></script>
+
+    <script>
+        let conversationId = @conversation.ConversationId;
+        let currentUserId = @currentUserId;
+        let connection = null;
+        let typingTimeout = null;
+        let isTyping = false;
+        let isGroupConversation = @(conversation.IsGroup == true ? "true" : "false");
+
+        $(document).ready(function () {
+            console.log('🚀 Conversation page initialized');
+            console.log('ConversationId:', conversationId);
+            console.log('CurrentUserId:', currentUserId);
+
+            // ✅ Initialize shared search
+            initializeSearch();
+
+            // Initialize SignalR
+            initializeSignalR();
+
+            // Load reactions cho các messages có sẵn
+            loadExistingReactions();
+
+            // Auto-resize textarea
+            $('#messageInput').on('input', function () {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+                handleTyping();
+            });
+
+            // Toggle info panel
+            $('#toggleInfoBtn').off('click').on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🖱️ Info button clicked!');
+                $('#infoPanel').toggleClass('show');
+                console.log('Panel has class "show":', $('#infoPanel').hasClass('show'));
+            });
+
+            // ✅ FIX: Send message on Enter - CHỈ XỬ LÝ 1 LẦN
+            $('#messageInput').off('keydown').on('keydown', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    sendMessageViaSignalR();
+                    return false;
+                }
+            });
+
+            // ✅ FIX: Submit form - CHỈ XỬ LÝ 1 LẦN, KHÔNG GỌI API
+            $('#messageForm').off('submit').on('submit', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                sendMessageViaSignalR();
+                return false;
+            });
+
+            // ✅ FIX: Send button click - CHỈ XỬ LÝ 1 LẦN
+            $('#sendBtn').off('click').on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                sendMessageViaSignalR();
+                return false;
+            });
+
+            // Mark as read when entering conversation
+            setTimeout(function () {
+                markAsRead();
+            }, 500);
+
+            // Auto scroll to bottom
+            scrollToBottom();
+
+            // Load conversations list
+            loadConversationsList();
+
+            initConversationsPanelEvents();
+
+            // Create group button
+            $('#createGroupBtn').off('click').on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🖱️ Create group button clicked from Conversation page');
+                loadCreateGroupModal();
+            });
+        });
+
+
+        // ========== SignalR Functions ==========
+
+        function initializeSignalR() {
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl("/chatHub")
+                .withAutomaticReconnect()
+                .build();
+
+            // ReceiveMessage - Nhận tin nhắn mới
+            connection.on("ReceiveMessage", function (data) {
+                console.log("✉️ Received message:", data);
+
+                // Chỉ add message nếu đang ở conversation này
+                if (data.conversationId === conversationId) {
+                    addMessageToUI(data);
+                    scrollToBottom();
+                    markAsRead();
+                }
+
+                // ✅ Update conversation panel
+                loadConversationsPanel();
+
+                // Play notification sound if message from others
+                if (data.sender.userId !== currentUserId && data.conversationId !== conversationId) {
+                    playNotificationSound();
+                }
+            });
+
+            // UserTyping - Hiển thị typing indicator
+            connection.on("UserTyping", function (data) {
+                if (data.conversationId === conversationId && data.userId !== currentUserId) {
+                    showTypingIndicator(data.fullName);
+                }
+            });
+
+            // UserStoppedTyping - Ẩn typing indicator
+            connection.on("UserStoppedTyping", function (data) {
+                if (data.conversationId === conversationId) {
+                    hideTypingIndicator();
+                }
+            });
+
+            // MessageRead - Tin nhắn đã được đọc
+            connection.on("MessageRead", function (data) {
+                if (data.conversationId === conversationId && data.userId !== currentUserId) {
+                    updateReadStatus();
+                }
+            });
+
+            // UserStatusChanged - Trạng thái online/offline
+            connection.on("UserStatusChanged", function (data) {
+                updateUserStatus(data.userId, data.isOnline, data.lastSeen);
+            });
+
+            // ReactionUpdated - Reaction được cập nhật
+            connection.on("ReactionUpdated", function (data) {
+                if (data.conversationId === conversationId) {
+                    updateReactionUI(data);
+                }
+            });
+
+            // MessageEdited - Tin nhắn được chỉnh sửa
+            connection.on("MessageEdited", function (data) {
+                if (data.conversationId === conversationId) {
+                    updateEditedMessage(data);
+                }
+            });
+
+            // MessageDeleted - Tin nhắn bị xóa
+            connection.on("MessageDeleted", function (data) {
+                if (data.conversationId === conversationId) {
+                    removeMessageFromUI(data.messageId);
+                }
+            });
+
+            // Error handling
+            connection.on("Error", function (message) {
+                console.error("SignalR Error:", message);
+                alert(message);
+            });
+
+            // Start connection
+            connection.start()
+                .then(function () {
+                    console.log("✅ SignalR Connected!");
+                    markAsRead();
+                })
+                .catch(function (err) {
+                    console.error("❌ SignalR Connection Error:", err);
+                    setTimeout(initializeSignalR, 5000);
+                });
+
+            // Reconnecting
+            connection.onreconnecting(function () {
+                console.log("🔄 SignalR Reconnecting...");
+            });
+
+            // Reconnected
+            connection.onreconnected(function () {
+                console.log("✅ SignalR Reconnected!");
+                markAsRead();
+                loadConversationsList();
+            });
+
+            // Disconnected
+            connection.onclose(function () {
+                console.log("❌ SignalR Disconnected!");
+                setTimeout(initializeSignalR, 5000);
+            });
+        }
+
+        // Load reactions cho các messages đã có sẵn khi page load
+        function loadExistingReactions() {
+            $('.message-wrapper').each(function () {
+                const messageId = $(this).data('message-id');
+                if (messageId) {
+                    loadReactionsForMessage(messageId);
+                }
+            });
+        }
+
+        // ===== Load conversations panel =====
+        function loadConversationsPanel() {
+            $.ajax({
+                url: '@Url.Action("LoadConversationsPanel", "Chat")',
+                type: 'GET',
+                data: { activeConversationId: conversationId },
+                success: function (html) {
+                    // ✅ QUAN TRỌNG: Thay thế toàn bộ panel, không chỉ list
+                    $('.conversations-panel').replaceWith(html);
+
+                    // Re-bind các events sau khi load
+                    initConversationsPanelEvents();
+                },
+                error: function () {
+                    console.error('Failed to load conversations panel');
+                }
+            });
+        }
+
+        // ===== Initialize panel events =====
+        function initConversationsPanelEvents() {
+            // ✅ Use shared search initialization
+            initializeSearch();
+
+            // Create group button
+            $('#createGroupBtn').off('click').on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                loadCreateGroupModal();
+            });
+
+            // Tab filtering
+            $('.tab-btn').off('click').on('click', function () {
+                $('.tab-btn').removeClass('active');
+                $(this).addClass('active');
+                var tab = $(this).data('tab');
+                filterConversations(tab);
+            });
+        }
+
+        // Load reactions cho 1 message cụ thể
+        function loadReactionsForMessage(messageId) {
+            $.ajax({
+                url: '@Url.Action("GetMessageReactions", "Chat")',
+                type: 'GET',
+                data: { messageId: messageId },
+                success: function (response) {
+                    if (response.success && response.reactions && response.reactions.length > 0) {
+                        updateMessageReactions(messageId, response.reactions);
+                    }
+                },
+                error: function (xhr) {
+                    console.error('Error loading reactions for message:', messageId, xhr);
+                }
+            });
+        }
+
+        // Cập nhật reactions UI cho message
+        function updateMessageReactions(messageId, reactions) {
+            const messageWrapper = $(`.message-wrapper[data-message-id="${messageId}"]`);
+            const reactionsContainer = messageWrapper.find('.message-reactions');
+
+            if (reactions && reactions.length > 0) {
+                let html = '';
+                reactions.forEach(function (r) {
+                    const isMyReaction = r.userIds && r.userIds.includes(currentUserId);
+                    html += `
+                                <div class="reaction-item ${isMyReaction ? 'active' : ''}"
+                                     onclick="reactMessageViaSignalR(${messageId}, '${r.reactionType}')">
+                                    <span>${r.reactionType}</span>
+                                    <span>${r.count}</span>
+                                </div>
+                            `;
+                });
+                reactionsContainer.html(html);
+                reactionsContainer.show();
+            } else {
+                reactionsContainer.hide();
+            }
+        }
+
+        // Send message via SignalR
+        function sendMessageViaSignalR() {
+            const messageText = $('#messageInput').val().trim();
+
+            if (!messageText) {
+                console.log('⚠️ Empty message, skipping...');
+                return;
+            }
+
+            // ✅ QUAN TRỌNG: Kiểm tra nếu đang gửi thì KHÔNG gửi nữa
+            if ($('#sendBtn').prop('disabled')) {
+                console.log('⚠️ Already sending, skipping...');
+                return;
+            }
+
+            console.log('📤 Sending message via SignalR:', messageText);
+
+            // Disable send button NGAY LẬP TỨC
+            $('#sendBtn').prop('disabled', true);
+            $('#messageInput').prop('disabled', true);
+
+            connection.invoke("SendMessage", conversationId, messageText)
+                .then(function () {
+                    console.log("✅ Message sent successfully");
+                    $('#messageInput').val('');
+                    $('#messageInput').css('height', 'auto');
+
+                    // Enable lại sau 300ms để tránh spam
+                    setTimeout(function () {
+                        $('#sendBtn').prop('disabled', false);
+                        $('#messageInput').prop('disabled', false);
+                        $('#messageInput').focus();
+                    }, 300);
+
+                    // Stop typing indicator
+                    if (isTyping) {
+                        connection.invoke("UserStoppedTyping", conversationId);
+                        isTyping = false;
+                    }
+                })
+                .catch(function (err) {
+                    console.error("❌ Send message error:", err);
+                    alert("Không thể gửi tin nhắn. Vui lòng thử lại!");
+
+                    // Enable lại ngay khi lỗi
+                    $('#sendBtn').prop('disabled', false);
+                    $('#messageInput').prop('disabled', false);
+                });
+        }
+
+        // Handle typing indicator
+        function handleTyping() {
+            if (!isTyping && connection && connection.state === signalR.HubConnectionState.Connected) {
+                isTyping = true;
+                connection.invoke("UserTyping", conversationId).catch(err => console.error(err));
+            }
+
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(function () {
+                if (isTyping && connection && connection.state === signalR.HubConnectionState.Connected) {
+                    connection.invoke("UserStoppedTyping", conversationId).catch(err => console.error(err));
+                    isTyping = false;
+                }
+            }, 1000);
+        }
+
+        // Show typing indicator
+        function showTypingIndicator(userName) {
+            if ($('#typingIndicator').length === 0) {
+                const html = `
+                            <div id="typingIndicator" style="padding: 10px 20px; color: #6b7280; font-size: 13px; font-style: italic;">
+                                <i class="fas fa-circle" style="font-size: 8px; animation: pulse 1.5s infinite;"></i>
+                                <i class="fas fa-circle" style="font-size: 8px; animation: pulse 1.5s infinite 0.3s;"></i>
+                                <i class="fas fa-circle" style="font-size: 8px; animation: pulse 1.5s infinite 0.6s;"></i>
+                                ${userName} đang nhập...
+                            </div>
+                        `;
+                $('#messagesArea').append(html);
+                scrollToBottom();
+            }
+        }
+
+        // Hide typing indicator
+        function hideTypingIndicator() {
+            $('#typingIndicator').remove();
+        }
+
+        // Mark as read
+        function markAsRead() {
+            if (connection && connection.state === signalR.HubConnectionState.Connected) {
+                connection.invoke("MarkAsRead", conversationId).catch(err => console.error(err));
+            }
+        }
+
+        // ========== UI Functions ==========
+
+        // Add message to UI
+        function addMessageToUI(msg) {
+            const isSent = msg.sender.userId === currentUserId;
+            const senderName = msg.sender.fullName || msg.sender.username || 'Unknown';
+            const senderAvatar = msg.sender.avatar || '/images/default-avatar.png';
+            const isGroup = isGroupConversation;
+
+            console.log('📝 Adding message to UI:', {
+                messageId: msg.messageId,
+                isSent: isSent,
+                isGroup: isGroup,
+                senderName: senderName,
+                senderAvatar: senderAvatar
+            });
+
+            let html = `
+                <div class="message-wrapper ${isSent ? 'sent' : 'received'}" data-message-id="${msg.messageId}">
+            `;
+
+            // ✅ QUAN TRỌNG: Hiện avatar cho message từ người khác trong nhóm
+            if (!isSent && isGroup) {
+                console.log('👤 Rendering avatar for group message from:', senderName);
+
+                // Kiểm tra avatar có hợp lệ không
+                const hasValidAvatar = senderAvatar &&
+                    senderAvatar.trim() !== '' &&
+                    senderAvatar !== '/images/default-avatar.png';
+
+                if (hasValidAvatar) {
+                    // Có avatar thật
+                    html += `
+                        <div class="message-avatar">
+                            <img src="${escapeHtml(senderAvatar)}"
+                                 alt="${escapeHtml(senderName)}"
+                                 onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#667eea,#7dc1f2);display:flex;align-items:center;justify-content:center;color:white;font-size:14px;font-weight:600;\\'>${escapeHtml(senderName).charAt(0).toUpperCase()}</div>';">
+                        </div>
+                    `;
+                } else {
+                    // Dùng default avatar với chữ cái đầu
+                    const initial = senderName.charAt(0).toUpperCase();
+                    html += `
+                        <div class="message-avatar">
+                            <div style="width: 32px; height: 32px; border-radius: 50%;
+                                        background: linear-gradient(135deg, #667eea 0%, #7dc1f2 100%);
+                                        display: flex; align-items: center; justify-content: center;
+                                        color: white; font-size: 14px; font-weight: 600;">
+                                ${initial}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            html += `<div class="message-content">`;
+
+            // Hiển thị tên người gửi nếu là nhóm và không phải tin nhắn của mình
+            if (!isSent && isGroup) {
+                html += `<div class="message-sender-name">${escapeHtml(senderName)}</div>`;
+            }
+
+            html += `
+                <div class="message-bubble ${msg.isEdited ? 'edited' : ''}">
+                    ${msg.isPinned ? '<i class="fas fa-thumbtack" style="margin-right: 6px; font-size: 12px;"></i>' : ''}
+                    ${escapeHtml(msg.messageText)}
+            `;
+
+            // Chỉ hiện actions cho tin nhắn của mình
+            if (isSent) {
+                html += `
+                    <div class="message-actions">
+                        <button class="message-action-btn" onclick="reactMessageViaSignalR(${msg.messageId}, '👍')">
+                            <i class="far fa-thumbs-up"></i>
+                        </button>
+                        <button class="message-action-btn" onclick="editMessageViaSignalR(${msg.messageId})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="message-action-btn" onclick="deleteMessageViaSignalR(${msg.messageId})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+            }
+
+            html += `
+                </div>
+                <div class="message-meta">
+                    <span>${msg.sentAt}</span>
+            `;
+
+            if (isSent) {
+                html += `<i class="fas fa-check-double" style="color: #0068ff;"></i>`;
+            }
+
+            html += `
+                    </div>
+                    <div class="message-reactions" data-message-id="${msg.messageId}"></div>
+                </div>
+            </div>
+            `;
+
+            $('#messagesArea').append(html);
+            console.log('✅ Message added to UI successfully');
+        }
+
+        // ✅ Escape HTML helper
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // React to message via SignalR
+        function reactMessageViaSignalR(messageId, reactionType) {
+            if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
+                alert("Chưa kết nối đến server!");
+                return;
+            }
+
+            connection.invoke("ReactToMessage", messageId, reactionType)
+                .catch(err => {
+                    console.error("React error:", err);
+                    alert("Không thể thả reaction!");
+                });
+        }
+
+        // Edit message via SignalR
+        function editMessageViaSignalR(messageId) {
+            const messageWrapper = $(`.message-wrapper[data-message-id="${messageId}"]`);
+            const messageBubble = messageWrapper.find('.message-bubble').clone();
+            messageBubble.find('.message-actions').remove();
+            messageBubble.find('i.fa-thumbtack').remove();
+            const currentText = messageBubble.text().trim().replace('(đã chỉnh sửa)', '').trim();
+
+            const newText = prompt('Chỉnh sửa tin nhắn:', currentText);
+
+            if (newText && newText !== currentText) {
+                if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
+                    alert("Chưa kết nối đến server!");
+                    return;
+                }
+
+                connection.invoke("EditMessage", messageId, newText)
+                    .catch(err => {
+                        console.error("Edit error:", err);
+                        alert("Không thể chỉnh sửa tin nhắn!");
+                    });
+            }
+        }
+
+        // Delete message via SignalR
+        function deleteMessageViaSignalR(messageId) {
+            if (!confirm('Bạn có chắc muốn thu hồi tin nhắn này?')) return;
+
+            if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
+                alert("Chưa kết nối đến server!");
+                return;
+            }
+
+            connection.invoke("DeleteMessage", messageId)
+                .catch(err => {
+                    console.error("Delete error:", err);
+                    alert("Không thể xóa tin nhắn!");
+                });
+        }
+
+        // Update reaction UI
+        function updateReactionUI(data) {
+            updateMessageReactions(data.messageId, data.reactions);
+        }
+
+        // Update edited message
+        function updateEditedMessage(data) {
+            const messageWrapper = $(`.message-wrapper[data-message-id="${data.messageId}"]`);
+            const messageBubble = messageWrapper.find('.message-bubble');
+
+            // Preserve pin icon if exists
+            const pinIcon = messageBubble.find('i.fa-thumbtack');
+            const messageActions = messageBubble.find('.message-actions');
+
+            messageBubble.html('');
+            if (pinIcon.length > 0) {
+                messageBubble.append(pinIcon);
+            }
+            messageBubble.append(document.createTextNode(data.newText));
+            if (messageActions.length > 0) {
+                messageBubble.append(messageActions);
+            }
+
+            messageBubble.addClass('edited');
+        }
+
+        // Remove message from UI
+        function removeMessageFromUI(messageId) {
+            $(`.message-wrapper[data-message-id="${messageId}"]`).fadeOut(300, function () {
+                $(this).remove();
+            });
+        }
+
+        // Update user status
+        function updateUserStatus(userId, isOnline, lastSeen) {
+            const statusText = isOnline ? 'Đang hoạt động' : 'Không hoạt động';
+            $('.chat-header-status').text(statusText).toggleClass('online', isOnline);
+
+            // Update in conversation list
+            loadConversationsList();
+        }
+
+        // Update read status
+        function updateReadStatus() {
+            $('.message-wrapper.sent .fa-check-double').css('color', '#0068ff');
+        }
+
+        // Scroll to bottom
+        function scrollToBottom() {
+            const messagesArea = document.getElementById('messagesArea');
+            if (messagesArea) {
+                messagesArea.scrollTop = messagesArea.scrollHeight;
+            }
+        }
+
+        // Scroll to specific message
+        function scrollToMessage(messageId) {
+            const messageWrapper = $(`.message-wrapper[data-message-id="${messageId}"]`);
+            if (messageWrapper.length > 0) {
+                messageWrapper[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                messageWrapper.addClass('highlight');
+                setTimeout(function () {
+                    messageWrapper.removeClass('highlight');
+                }, 2000);
+            }
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Play notification sound
+        function playNotificationSound() {
+            // const audio = new Audio('/sounds/notification.mp3');
+            // audio.play().catch(err => console.error(err));
+        }
+
+        // ========== Conversations List Functions ==========
+
+        // Load conversations list
+        function loadConversationsList() {
+            $.ajax({
+                url: '@Url.Action("LoadConversationsPanel", "Chat")',
+                type: 'GET',
+                data: { activeConversationId: conversationId },
+                success: function (html) {
+                    $('.conversations-panel').html(html);
+                }
+            });
+        }
+
+        // ========== Create Group Modal ==========
+        var isModalLoading = false;
+
+        function loadCreateGroupModal() {
+            console.log('📝 loadCreateGroupModal called from Conversation page');
+
+            // If modal already exists, reuse it
+            if ($('#createGroupModal').length > 0) {
+                console.log('♻️ Modal already exists, reusing...');
+
+                if (window.modalSelectedMembers) {
+                    window.modalSelectedMembers.clear();
+                }
+
+                $('#groupName').val('');
+                $('#searchMembers').val('');
+                $('.member-item').removeClass('selected');
+                $('.member-checkbox i').hide();
+                $('#selectedCount').hide();
+                $('#createGroupBtn').prop('disabled', true);
+
+                $('#createGroupModal').addClass('show');
+                setTimeout(function () {
+                    $('#groupName').focus();
+                }, 100);
+
+                console.log('✅ Modal reused successfully');
+                return;
+            }
+
+            if (isModalLoading) {
+                console.log('⚠️ Modal is already loading, skip...');
+                return;
+            }
+
+            isModalLoading = true;
+            console.log('🔄 Loading modal HTML for the first time...');
+
+            $('body').append('<div id="modalLoading" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10000;background:rgba(255,255,255,0.9);padding:20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:#0068ff;"></i></div>');
+
+            $.ajax({
+                url: '@Url.Action("GetFriendsForGroup", "Chat")',
+                type: 'GET',
+                success: function (html) {
+                    console.log('✅ Modal HTML loaded successfully');
+
+                    $('#modalLoading').remove();
+                    isModalLoading = false;
+
+                    $('body').append(html);
+
+                    setTimeout(function () {
+                        console.log('🎉 Opening modal after DOM ready...');
+                        $('#createGroupModal').addClass('show');
+                        $('#groupName').focus();
+                    }, 100);
+                },
+                error: function (xhr, status, error) {
+                    console.error('❌ Error loading modal:', error);
+                    $('#modalLoading').remove();
+                    isModalLoading = false;
+                    alert('Không thể tải danh sách bạn bè!\n\nError: ' + error);
+                }
+            });
+        }
+
+        // ========== Other Actions ==========
+
+        function pinConversation(conversationId) {
+            $.ajax({
+                url: '@Url.Action("PinConversation", "Chat")',
+                type: 'POST',
+                data: {
+                    conversationId: conversationId,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alert(response.message);
+                        loadConversationsList();
+                    }
+                },
+                error: function () {
+                    alert("Có lỗi xảy ra!");
+                }
+            });
+        }
+
+        function archiveConversation(conversationId) {
+            $.ajax({
+                url: '@Url.Action("ArchiveConversation", "Chat")',
+                type: 'POST',
+                data: {
+                    conversationId: conversationId,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alert(response.message);
+                        loadConversationsList();
+                    }
+                },
+                error: function () {
+                    alert("Có lỗi xảy ra!");
+                }
+            });
+        }
+
+        function muteConversation(conversationId) {
+            $.ajax({
+                url: '@Url.Action("MuteConversation", "Chat")',
+                type: 'POST',
+                data: {
+                    conversationId: conversationId,
+                    mute: true,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alert(response.message);
+                    }
+                },
+                error: function () {
+                    alert("Có lỗi xảy ra!");
+                }
+            });
+        }
+
+        function deleteConversation(conversationId) {
+            if (!confirm('Bạn có chắc muốn xóa hội thoại này?')) return;
+
+            $.ajax({
+                url: '@Url.Action("DeleteConversation", "Chat")',
+                type: 'POST',
+                data: {
+                    conversationId: conversationId,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function (response) {
+                    if (response.success) {
+                        window.location.href = '@Url.Action("Index", "Chat")';
+                    } else {
+                        alert(response.message || "Có lỗi xảy ra!");
+                    }
+                },
+                error: function () {
+                    alert("Có lỗi xảy ra!");
+                }
+            });
+        }
+
+        function filterConversations(tab) {
+            console.log('Filter by:', tab);
+        }
+    </script>
+
+    @Html.AntiForgeryToken()
+}

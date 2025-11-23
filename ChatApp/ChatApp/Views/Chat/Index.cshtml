@@ -1,0 +1,935 @@
+﻿@model List<dynamic>
+@{
+    ViewData["Title"] = "Tin nhắn";
+    Layout = "_Layout";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/conversations.css" />
+    <style>
+        /* Enhanced Search Results */
+        .search-results {
+            display: none;
+            max-height: calc(100vh - 250px);
+            overflow-y: auto;
+            border-bottom: 1px solid #e5e7eb;
+            background: #fff;
+        }
+
+        .search-result-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+            .search-result-item:hover {
+                background: #f9fafb;
+            }
+
+            .search-result-item:last-child {
+                border-bottom: none;
+            }
+
+        .search-result-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            margin-right: 12px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+            .search-result-avatar img {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                object-fit: cover;
+            }
+
+            .search-result-avatar .default-avatar {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #667eea 0%, #7dc1f2 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 18px;
+                font-weight: 600;
+            }
+
+        .search-result-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .search-result-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .search-result-email {
+            font-size: 12px;
+            color: #6b7280;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .search-result-action {
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
+
+        .add-friend-btn {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+            .add-friend-btn.primary {
+                background: #0068ff;
+                color: white;
+            }
+
+                .add-friend-btn.primary:hover {
+                    background: #0052cc;
+                }
+
+            .add-friend-btn.secondary {
+                background: #e5e7eb;
+                color: #6b7280;
+            }
+
+                .add-friend-btn.secondary:hover {
+                    background: #d1d5db;
+                }
+
+            .add-friend-btn.success {
+                background: #10b981;
+                color: white;
+            }
+
+                .add-friend-btn.success:hover {
+                    background: #059669;
+                }
+
+            .add-friend-btn.warning {
+                background: #f59e0b;
+                color: white;
+            }
+
+                .add-friend-btn.warning:hover {
+                    background: #d97706;
+                }
+
+            .add-friend-btn:disabled {
+                cursor: not-allowed;
+                opacity: 0.6;
+            }
+        .chat-container {
+            display: flex;
+            height: calc(100vh - 60px);
+            background: #fff;
+        }
+
+        /* ===== CONVERSATIONS LIST (LEFT) ===== */
+        .conversations-panel {
+            width: 340px;
+            border-right: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+        }
+
+        .conversations-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+            .conversations-header h2 {
+                font-size: 20px;
+                font-weight: 600;
+                color: #1f2937;
+                margin: 0;
+            }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-action-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: #f3f4f6;
+            color: #6b7280;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+            .header-action-btn:hover {
+                background: #e5e7eb;
+                color: #1f2937;
+            }
+
+        .conversations-search {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+            .search-box input {
+                width: 100%;
+                padding: 8px 12px 8px 36px;
+                border: 1px solid #e5e7eb;
+                border-radius: 20px;
+                font-size: 14px;
+                outline: none;
+                transition: all 0.2s;
+            }
+
+                .search-box input:focus {
+                    border-color: #0068ff;
+                    background: #f8faff;
+                }
+
+            .search-box i {
+                position: absolute;
+                left: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: #9ca3af;
+                font-size: 14px;
+            }
+
+        /* Search Results */
+        .search-results {
+            display: none;
+            max-height: 400px;
+            overflow-y: auto;
+            border-bottom: 1px solid #e5e7eb;
+            background: #f9fafb;
+        }
+
+        .search-result-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+            .search-result-item:hover {
+                background: #fff;
+            }
+
+        .search-result-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+            .search-result-avatar img {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                object-fit: cover;
+            }
+
+            .search-result-avatar .default-avatar {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #667eea 0%, #7dc1f2 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 18px;
+                font-weight: 600;
+            }
+
+        .search-result-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .search-result-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 2px;
+        }
+
+        .search-result-email {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .search-result-action {
+            flex-shrink: 0;
+        }
+
+        .add-friend-btn {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+            .add-friend-btn.primary {
+                background: #0068ff;
+                color: white;
+            }
+
+                .add-friend-btn.primary:hover {
+                    background: #0052cc;
+                }
+
+            .add-friend-btn.secondary {
+                background: #e5e7eb;
+                color: #6b7280;
+            }
+
+                .add-friend-btn.secondary:hover {
+                    background: #d1d5db;
+                }
+
+            .add-friend-btn.success {
+                background: #10b981;
+                color: white;
+                cursor: not-allowed;
+            }
+
+            .add-friend-btn.warning {
+                background: #f59e0b;
+                color: white;
+            }
+
+        .conversations-tabs {
+            display: flex;
+            padding: 8px 16px;
+            border-bottom: 1px solid #e5e7eb;
+            gap: 4px;
+        }
+
+        .tab-btn {
+            padding: 6px 16px;
+            border: none;
+            background: transparent;
+            color: #6b7280;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 20px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+            .tab-btn:hover {
+                background: #f3f4f6;
+            }
+
+            .tab-btn.active {
+                background: #e0efff;
+                color: #0068ff;
+            }
+
+        .conversations-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .conversation-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid #f3f4f6;
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+        }
+
+            .conversation-item:hover {
+                background: #f9fafb;
+            }
+
+            .conversation-item.active {
+                background: #e0efff;
+            }
+
+            .conversation-item.pinned {
+                background: #fef3c7;
+            }
+
+                .conversation-item.pinned:hover {
+                    background: #fde68a;
+                }
+
+        .conversation-avatar {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            margin-right: 12px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+            .conversation-avatar img {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                object-fit: cover;
+            }
+
+            .conversation-avatar .default-avatar {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #667eea 0%, #7dc1f2 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 20px;
+                font-weight: 600;
+            }
+
+        .online-indicator {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 12px;
+            height: 12px;
+            background: #10b981;
+            border: 2px solid #fff;
+            border-radius: 50%;
+        }
+
+        .conversation-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .conversation-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .conversation-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1f2937;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+
+        .conversation-time {
+            font-size: 12px;
+            color: #9ca3af;
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
+
+        .conversation-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .last-message {
+            font-size: 13px;
+            color: #6b7280;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+
+            .last-message.unread {
+                color: #1f2937;
+                font-weight: 600;
+            }
+
+        .unread-badge {
+            background: #ef4444;
+            color: white;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .pin-icon {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            color: #f59e0b;
+            font-size: 12px;
+        }
+
+        /* ===== CHAT AREA (CENTER) ===== */
+        .chat-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #f9fafb;
+        }
+
+        .chat-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #9ca3af;
+        }
+
+            .chat-empty-state i {
+                font-size: 64px;
+                margin-bottom: 16px;
+                color: #d1d5db;
+            }
+
+            .chat-empty-state h3 {
+                font-size: 18px;
+                font-weight: 600;
+                color: #6b7280;
+                margin-bottom: 8px;
+            }
+
+            .chat-empty-state p {
+                font-size: 14px;
+                color: #9ca3af;
+            }
+    </style>
+}
+
+
+<div class="chat-container">
+    <!-- Left Panel: Conversations List -->
+    <!-- Sidebar chung – luôn đồng bộ -->
+    @{
+        await Html.RenderPartialAsync("_ConversationsPanel", Model);
+    }
+
+    <!-- Center Panel: Chat Area -->
+    <div class="chat-panel">
+        <div class="chat-empty-state">
+            <i class="fas fa-comments"></i>
+            <h3>Chào mừng đến với ChatApp</h3>
+            <p>Chọn một cuộc hội thoại để bắt đầu nhắn tin</p>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <!-- ✅ THÊM: Import SignalR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+
+    <!-- ✅ IMPORT SHARED SEARCH FUNCTIONS -->
+    <script src="~/js/chat-search.js"></script>
+
+    <script>
+        let connection = null;
+        let currentUserId = @ViewBag.CurrentUserId; // ✅ Lấy UserId từ ViewBag
+
+        $(document).ready(function () {
+            console.log('🚀 Index page initialized');
+            console.log('Current UserId:', currentUserId);
+
+            // ✅ Initialize SignalR for real-time updates
+            initializeSignalRForIndex();
+
+            // ✅ Initialize shared search
+            initializeSearch();
+
+            // ===== CREATE GROUP BUTTON =====
+            $('#createGroupBtn').off('click').on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                loadCreateGroupModal();
+            });
+
+            // ===== TAB FILTERING =====
+            $('.tab-btn').click(function () {
+                $('.tab-btn').removeClass('active');
+                $(this).addClass('active');
+                var tab = $(this).data('tab');
+                filterConversations(tab);
+            });
+
+            // ===== HIGHLIGHT ACTIVE CONVERSATION =====
+            var currentPath = window.location.pathname;
+            $('.conversation-item').each(function () {
+                if ($(this).attr('href') === currentPath) {
+                    $(this).addClass('active');
+                }
+            });
+
+            // ===== RELOAD CONVERSATIONS LIST =====
+            window.reloadConversationsList = function () {
+                $.ajax({
+                    url: '@Url.Action("LoadConversationsPanel", "Chat")',
+                    type: 'GET',
+                    success: function (html) {
+                        $('.conversations-panel').replaceWith(html);
+                        
+                        // Re-bind events after reload
+                        initConversationsPanelEvents();
+                        
+                        // Highlight current conversation
+                        var currentPath = window.location.pathname;
+                        $('.conversation-item').each(function () {
+                            if ($(this).attr('href') === currentPath) {
+                                $(this).addClass('active');
+                            }
+                        });
+                    },
+                    error: function () {
+                        console.error('Failed to reload conversations');
+                    }
+                });
+            };
+        });
+
+        // ========== SignalR for Index Page ==========
+        function initializeSignalRForIndex() {
+            console.log('🔌 Initializing SignalR for Index page...');
+            
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl("/chatHub")
+                .withAutomaticReconnect()
+                .build();
+
+            // ✅ QUAN TRỌNG: Lắng nghe tin nhắn mới để cập nhật sidebar
+            connection.on("ReceiveMessage", function (data) {
+                console.log("✉️ [Index] Received message:", data);
+                
+                // Cập nhật conversations panel
+                reloadConversationsPanel();
+                
+                // Play notification sound
+                if (data.sender.userId !== currentUserId) {
+                    playNotificationSound();
+                    
+                    // Hiển thị toast notification (optional)
+                }
+            });
+
+            // ✅ Lắng nghe thay đổi trạng thái online/offline
+            connection.on("UserStatusChanged", function (data) {
+                console.log("👤 [Index] User status changed:", data);
+                updateConversationItemStatus(data.userId, data.isOnline);
+            });
+
+            // ✅ Lắng nghe khi tin nhắn được đọc
+            connection.on("MessageRead", function (data) {
+                console.log("👁️ [Index] Message read:", data);
+                updateConversationReadStatus(data.conversationId);
+            });
+
+            // Error handling
+            connection.on("Error", function (message) {
+                console.error("SignalR Error:", message);
+            });
+
+            // Start connection
+            connection.start()
+                .then(function () {
+                    console.log("✅ SignalR Connected on Index!");
+                })
+                .catch(function (err) {
+                    console.error("❌ SignalR Connection Error:", err);
+                    setTimeout(initializeSignalRForIndex, 5000);
+                });
+
+            // Reconnecting
+            connection.onreconnecting(function () {
+                console.log("🔄 SignalR Reconnecting...");
+            });
+
+            // Reconnected
+            connection.onreconnected(function () {
+                console.log("✅ SignalR Reconnected!");
+                reloadConversationsPanel();
+            });
+
+            // Disconnected
+            connection.onclose(function () {
+                console.log("❌ SignalR Disconnected!");
+                setTimeout(initializeSignalRForIndex, 5000);
+            });
+        }
+
+        // ===== Reload conversations panel =====
+        function reloadConversationsPanel() {
+            console.log('🔄 Reloading conversations panel...');
+            
+            $.ajax({
+                url: '@Url.Action("LoadConversationsPanel", "Chat")',
+                type: 'GET',
+                success: function (html) {
+                    $('.conversations-panel').replaceWith(html);
+                    
+                    // Re-bind events after reload
+                    initConversationsPanelEvents();
+                    
+                    console.log('✅ Conversations panel reloaded');
+                },
+                error: function () {
+                    console.error('❌ Failed to reload conversations panel');
+                }
+            });
+        }
+
+        // ===== Update conversation item status (online/offline) =====
+        function updateConversationItemStatus(userId, isOnline) {
+            // Tìm conversation items của user này và cập nhật online indicator
+            $(`.conversation-item`).each(function() {
+                const $item = $(this);
+                const members = $item.data('members'); // Cần add data-members vào HTML
+                
+                if (members && members.includes(userId)) {
+                    const $indicator = $item.find('.online-indicator');
+                    if (isOnline) {
+                        if ($indicator.length === 0) {
+                            $item.find('.conversation-avatar').append('<span class="online-indicator"></span>');
+                        }
+                    } else {
+                        $indicator.remove();
+                    }
+                }
+            });
+        }
+
+        // ===== Update conversation read status =====
+        function updateConversationReadStatus(conversationId) {
+            // Xóa unread badge cho conversation này
+            $(`.conversation-item[href*="${conversationId}"]`).find('.unread-badge').remove();
+        }
+
+        // ===== Show notification toast =====
+        function showNotificationToast(data) {
+            // Tạo toast notification đẹp (optional - nếu bạn muốn)
+            const toast = `
+                <div class="notification-toast" style="position: fixed; top: 20px; right: 20px; 
+                     background: white; padding: 16px; border-radius: 8px; 
+                     box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; 
+                     min-width: 300px; animation: slideIn 0.3s ease;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <img src="${data.sender.avatar}" 
+                             style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1f2937; margin-bottom: 2px;">
+                                ${escapeHtml(data.sender.fullName)}
+                            </div>
+                            <div style="font-size: 13px; color: #6b7280;">
+                                ${escapeHtml(data.messageText.substring(0, 50))}${data.messageText.length > 50 ? '...' : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            $('body').append(toast);
+            
+            // Auto remove after 3 seconds
+            setTimeout(function() {
+                $('.notification-toast').fadeOut(300, function() {
+                    $(this).remove();
+                });
+            }, 3000);
+        }
+
+        // ===== Play notification sound =====
+        // function playNotificationSound() {
+        //     Uncomment nếu bạn có file âm thanh
+        //     const audio = new Audio('/sounds/notification.mp3');
+        //     audio.play().catch(err => console.error(err));
+            
+        //     Hoặc dùng beep sound đơn giản
+        //     try {
+        //         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        //         const oscillator = audioContext.createOscillator();
+        //         const gainNode = audioContext.createGain();
+                
+        //         oscillator.connect(gainNode);
+        //         gainNode.connect(audioContext.destination);
+                
+        //         oscillator.frequency.value = 800;
+        //         oscillator.type = 'sine';
+                
+        //         gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        //         gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                
+        //         oscillator.start(audioContext.currentTime);
+        //         oscillator.stop(audioContext.currentTime + 0.1);
+        //     } catch (e) {
+        //         console.log('Cannot play sound:', e);
+        //     }
+        // }
+
+        // ===== Initialize panel events after reload =====
+        function initConversationsPanelEvents() {
+            // Use shared search initialization
+            initializeSearch();
+
+            // Create group button
+            $('#createGroupBtn').off('click').on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                loadCreateGroupModal();
+            });
+
+            // Tab filtering
+            $('.tab-btn').off('click').on('click', function () {
+                $('.tab-btn').removeClass('active');
+                $(this).addClass('active');
+                var tab = $(this).data('tab');
+                filterConversations(tab);
+            });
+        }
+
+        // ===== LOAD CREATE GROUP MODAL =====
+        var isModalLoading = false;
+
+        function loadCreateGroupModal() {
+            console.log('📝 loadCreateGroupModal called');
+
+            // ✅ QUAN TRỌNG: Nếu modal đã tồn tại, chỉ cần mở lại
+            if ($('#createGroupModal').length > 0) {
+                console.log('♻️ Modal already exists, reusing...');
+
+                // Clear state
+                if (window.modalSelectedMembers) {
+                    window.modalSelectedMembers.clear();
+                }
+
+                // Reset form
+                $('#groupName').val('');
+                $('#searchMembers').val('');
+                $('.member-item').removeClass('selected');
+                $('.member-checkbox i').hide();
+                $('#selectedCount').hide();
+                $('#createGroupBtn').prop('disabled', true);
+
+                // Show modal
+                $('#createGroupModal').addClass('show');
+                setTimeout(function () {
+                    $('#groupName').focus();
+                }, 100);
+
+                console.log('✅ Modal reused successfully');
+                return;
+            }
+
+            // ✅ Prevent double loading
+            if (isModalLoading) {
+                console.log('⚠️ Modal is already loading, skip...');
+                return;
+            }
+
+            isModalLoading = true;
+            console.log('🔄 Loading modal HTML for the first time...');
+
+            // Show loading
+            $('body').append('<div id="modalLoading" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10000;background:rgba(255,255,255,0.9);padding:20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:#0068ff;"></i></div>');
+
+            $.ajax({
+                url: '@Url.Action("GetFriendsForGroup", "Chat")',
+                type: 'GET',
+                success: function (html) {
+                    console.log('✅ Modal HTML loaded successfully');
+
+                    $('#modalLoading').remove();
+                    isModalLoading = false;
+
+                    // Append modal to body
+                    $('body').append(html);
+
+                    // Wait for DOM ready then open
+                    setTimeout(function () {
+                        console.log('🎉 Opening modal after DOM ready...');
+                        $('#createGroupModal').addClass('show');
+                        $('#groupName').focus();
+                    }, 100);
+                },
+                error: function (xhr, status, error) {
+                    console.error('❌ Error loading modal:', error);
+                    $('#modalLoading').remove();
+                    isModalLoading = false;
+                    alert('Không thể tải danh sách bạn bè!\n\nError: ' + error);
+                }
+            });
+        }
+
+        // ===== Filter conversations =====
+        function filterConversations(tab) {
+            console.log('Filter by:', tab);
+            // TODO: Implement filter logic
+        }
+
+        // ===== Escape HTML =====
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+
+    <!-- ✅ THÊM: CSS cho slide-in animation -->
+    <style>
+        @@keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+
+    @Html.AntiForgeryToken()
+}

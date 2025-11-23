@@ -1,0 +1,133 @@
+﻿@{
+    var currentUserId = ViewBag.CurrentUserId ?? 0;
+    var activeConversationId = ViewBag.ActiveConversationId ?? 0;
+    var conversations = Model as List<dynamic> ?? new List<dynamic>();
+}
+
+<div class="conversations-panel">
+    <div class="conversations-header">
+        <h2>Tin nhắn</h2>
+        <div class="header-actions">
+            <button class="header-action-btn" id="createGroupBtn" title="Tạo nhóm">
+                <i class="fas fa-user-plus"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="conversations-search">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Tìm email, tên, số điện thoại...">
+        </div>
+    </div>
+
+    <!-- ✅ Kết quả tìm kiếm (hiện khi có search) -->
+    <div class="search-results" id="searchResults" style="display:none;">
+        <!-- Sẽ render bằng JavaScript -->
+    </div>
+
+    <div class="conversations-tabs">
+        <button class="tab-btn active" data-tab="all">Tất cả</button>
+        <button class="tab-btn" data-tab="unread">Chưa đọc</button>
+        <button class="tab-btn" data-tab="groups">Nhóm</button>
+    </div>
+
+    <!-- ✅ Danh sách conversations (luôn hiển thị) -->
+    <div class="conversations-list" id="conversationsList">
+        @if (conversations.Count > 0)
+        {
+            foreach (var conv in conversations)
+            {
+                var conversationId = (int)conv.ConversationId;
+                var isActive = conversationId == activeConversationId;
+                var isPinned = conv.IsPinned == true;
+                var isGroup = conv.IsGroup == true;
+                var members = conv.Members as List<object>;
+
+                string displayName = isGroup ? (conv.ConversationName ?? "Nhóm chat") : "Người dùng";
+                string avatarUrl = "/images/default-avatar.png";
+                bool isOnline = false;
+
+                if (!isGroup && members != null && members.Count > 0)
+                {
+                    var other = members.Cast<dynamic>().FirstOrDefault(m => (int)m.UserId != currentUserId);
+                    if (other != null)
+                    {
+                        displayName = other.FullName?.ToString() ?? other.Username?.ToString() ?? "Người dùng";
+                        avatarUrl = other.Avatar?.ToString() ?? "/images/default-avatar.png";
+                        isOnline = other.IsOnline == true;
+                    }
+                }
+
+                var lastMsg = conv.LastMessage;
+                string lastText = lastMsg?.MessageText ?? "";
+                string lastTime = "";
+                if (lastMsg?.SentAt != null)
+                {
+                    var t = (DateTime)lastMsg.SentAt;
+                    var now = DateTime.Now;
+                    if (t.Date == now.Date) lastTime = t.ToString("HH:mm");
+                    else if (t.Date == now.AddDays(-1).Date) lastTime = "Hôm qua";
+                    else lastTime = t.ToString("dd/MM");
+                }
+
+                <a href="@Url.Action("Conversation", "Chat", new { id = conversationId })"
+                   class="conversation-item @(isPinned ? "pinned" : "") @(isActive ? "active" : "")"
+                   data-conversation-id="@conversationId">
+                    @if (isPinned)
+                    {
+                        <i class="fas fa-thumbtack pin-icon"></i>
+                    }
+
+                    <div class="conversation-avatar">
+                        @if (isGroup)
+                        {
+                            <div class="default-avatar" style="background: linear-gradient(135deg,#f59e0b,#ef4444);">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        }
+                        else
+                        {
+                            if (!string.IsNullOrEmpty(avatarUrl) && avatarUrl != "/images/default-avatar.png")
+                            {
+                                <img src="@avatarUrl" alt="@displayName" />
+                            }
+                            else
+                            {
+                                <div class="default-avatar">@displayName[0].ToString().ToUpper()</div>
+                            }
+                            if (isOnline)
+                            {
+                                <span class="online-indicator"></span>
+                            }
+                        }
+                    </div>
+
+                    <div class="conversation-info">
+                        <div class="conversation-top">
+                            <span class="conversation-name">@displayName</span>
+                            <span class="conversation-time">@lastTime</span>
+                        </div>
+                        <div class="conversation-bottom">
+                            <span class="last-message @(conv.UnreadCount > 0 ? "unread" : "")">
+                                @(string.IsNullOrEmpty(lastText) ? "Chưa có tin nhắn" : lastText)
+                            </span>
+                            @if (conv.UnreadCount > 0)
+                            {
+                                <span class="unread-badge">@conv.UnreadCount</span>
+                            }
+                        </div>
+                    </div>
+                </a>
+            }
+        }
+        else
+        {
+            <div style="padding:40px 20px;text-align:center;color:#9ca3af">
+                <i class="fas fa-comment-slash" style="font-size:48px;margin-bottom:16px;color:#d1d5db"></i>
+                <p>Chưa có cuộc hội thoại nào</p>
+                <p style="font-size:13px">Tìm kiếm bạn bè để bắt đầu!</p>
+            </div>
+        }
+    </div>
+</div>

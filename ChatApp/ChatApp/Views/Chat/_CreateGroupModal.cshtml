@@ -1,0 +1,628 @@
+﻿@model List<ChatApp.Models.User>
+
+<style>
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+    .modal-container {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: modal-appear 0.3s ease;
+    }
+
+    @@keyframes modal-appear {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .modal-close {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: transparent;
+        color: #6b7280;
+        cursor: pointer;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        transition: all 0.2s;
+    }
+
+        .modal-close:hover {
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+
+    .modal-body {
+        padding: 24px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 8px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s;
+        outline: none;
+    }
+
+        .form-input:focus {
+            border-color: #0068ff;
+            box-shadow: 0 0 0 3px rgba(0, 104, 255, 0.1);
+        }
+
+    .search-box {
+        position: relative;
+        margin-bottom: 16px;
+    }
+
+        .search-box input {
+            padding-left: 40px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+        }
+
+    .members-list {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+    }
+
+    .member-item {
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+        .member-item:last-child {
+            border-bottom: none;
+        }
+
+        .member-item:hover {
+            background: #f9fafb;
+        }
+
+        .member-item.selected {
+            background: #e0efff;
+        }
+
+    .member-checkbox {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #d1d5db;
+        border-radius: 4px;
+        margin-right: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.2s;
+    }
+
+    .member-item.selected .member-checkbox {
+        background: #0068ff;
+        border-color: #0068ff;
+        color: white;
+    }
+
+    .member-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-right: 12px;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+        .member-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .member-avatar .default-avatar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+    .member-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .member-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1f2937;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .member-username {
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .selected-count {
+        display: inline-block;
+        background: #e0efff;
+        color: #0068ff;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        margin-top: 8px;
+    }
+
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #374151;
+    }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+    .btn-primary {
+        background: #0068ff;
+        color: white;
+    }
+
+        .btn-primary:hover {
+            background: #0052cc;
+        }
+
+        .btn-primary:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        .btn-primary:not(:disabled) {
+            background: #0068ff !important;
+            color: white !important;
+            cursor: pointer !important;
+            opacity: 1 !important;
+        }
+
+        .btn-primary:disabled {
+            background: #d1d5db !important;
+            color: #9ca3af !important;
+            cursor: not-allowed !important;
+            opacity: 0.6 !important;
+        }
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #9ca3af;
+    }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 12px;
+            color: #d1d5db;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+</style>
+
+<div class="modal-overlay" id="createGroupModal">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3 class="modal-title">Tạo nhóm mới</h3>
+            <button class="modal-close" onclick="closeCreateGroupModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <form id="createGroupForm">
+                <div class="form-group">
+                    <label class="form-label">Tên nhóm <span style="color: #ef4444;">*</span></label>
+                    <input type="text"
+                           class="form-input"
+                           id="groupName"
+                           name="groupName"
+                           placeholder="Nhập tên nhóm..."
+                           required
+                           maxlength="100">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Thêm thành viên <span style="color: #ef4444;">*</span></label>
+
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text"
+                               class="form-input"
+                               id="searchMembers"
+                               placeholder="Tìm kiếm bạn bè...">
+                    </div>
+
+                    <div class="members-list" id="membersList">
+                        @if (Model != null && Model.Count > 0)
+                        {
+                            foreach (var friend in Model)
+                            {
+                                <div class="member-item" data-user-id="@friend.UserId" onclick="toggleMember(this)">
+                                    <div class="member-checkbox">
+                                        <i class="fas fa-check" style="display: none;"></i>
+                                    </div>
+                                    <div class="member-avatar">
+                                        @if (!string.IsNullOrEmpty(friend.Avatar) && friend.Avatar != "/images/default-avatar.png")
+                                        {
+                                            <img src="@friend.Avatar" alt="@friend.FullName">
+                                        }
+                                        else
+                                        {
+                                            <div class="default-avatar">
+                                                @friend.FullName.Substring(0, 1).ToUpper()
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="member-info">
+                                        <div class="member-name">@friend.FullName</div>
+                                        <div class="member-username">@@@friend.Username</div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="empty-state">
+                                <i class="fas fa-user-friends"></i>
+                                <p>Bạn chưa có bạn bè nào</p>
+                                <p style="font-size: 13px; margin-top: 8px;">Hãy kết bạn để tạo nhóm!</p>
+                            </div>
+                        }
+                    </div>
+
+                    <div id="selectedCount" style="display: none;">
+                        <span class="selected-count">Đã chọn: <span id="countNumber">0</span></span>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeCreateGroupModal()">
+                Hủy
+            </button>
+            <button type="button" class="btn btn-primary" id="createGroupBtn" onclick="createGroup()" disabled>
+                Tạo nhóm
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ✅ QUAN TRỌNG: Chỉ khởi tạo 1 lần duy nhất
+    if (!window.modalScriptInitialized) {
+        console.log('🚀 Modal script initializing (FIRST TIME)...');
+        window.modalScriptInitialized = true;
+
+        // ✅ Khởi tạo global variable
+        window.modalSelectedMembers = new Set();
+
+        // ✅ Open modal
+        window.openCreateGroupModal = function () {
+            console.log('🎉 Opening modal - START');
+
+            // Clear Set
+            window.modalSelectedMembers.clear();
+            console.log('🧹 Cleared selectedMembers:', window.modalSelectedMembers.size);
+
+            // Reset form fields
+            $('#groupName').val('');
+            $('#searchMembers').val('');
+
+            // Reset UI
+            $('.member-item').removeClass('selected');
+            $('.member-checkbox i').hide();
+
+            // Show modal
+            $('#createGroupModal').addClass('show');
+
+            // Focus and update UI
+            setTimeout(function () {
+                $('#groupName').focus();
+                updateSelectedCount();
+                console.log('✅ Modal opened and UI updated');
+            }, 150);
+        };
+
+        // Close modal
+        window.closeCreateGroupModal = function () {
+            console.log('🚪 Closing modal...');
+            $('#createGroupModal').removeClass('show');
+
+            // Reload conversations list
+            if (typeof window.reloadConversationsList === 'function') {
+                window.reloadConversationsList();
+            }
+            // Redirect to new conversation
+            setTimeout(function () {
+                window.location.href = '/Chat/Conversation/' + response.conversationId;
+            }, 500);
+        };
+
+        // Toggle member selection
+        window.toggleMember = function (element) {
+            const userId = parseInt($(element).data('user-id'));
+            const checkbox = $(element).find('.member-checkbox i');
+
+            console.log('🔍 Toggle member:', userId);
+
+            if (window.modalSelectedMembers.has(userId)) {
+                window.modalSelectedMembers.delete(userId);
+                $(element).removeClass('selected');
+                checkbox.hide();
+                console.log('❌ Removed:', userId);
+            } else {
+                window.modalSelectedMembers.add(userId);
+                $(element).addClass('selected');
+                checkbox.show();
+                console.log('✅ Added:', userId);
+            }
+
+            console.log('📊 Total:', window.modalSelectedMembers.size);
+            updateSelectedCount();
+        };
+
+        // Update selected count
+        window.updateSelectedCount = function () {
+            const count = window.modalSelectedMembers.size;
+            const groupName = $('#groupName').val() || '';
+            const groupNameTrimmed = groupName.trim();
+
+            console.log('📈 Updating - Count:', count, 'GroupName:', groupNameTrimmed);
+
+            $('#countNumber').text(count);
+
+            if (count > 0) {
+                $('#selectedCount').show();
+            } else {
+                $('#selectedCount').hide();
+            }
+
+            const shouldEnable = (count >= 2 && groupNameTrimmed.length > 0);
+
+            // ✅ Chọn button bên trong modal
+            const createBtn = $('#createGroupModal').find('#createGroupBtn');
+
+            console.log('🔍 Button found:', createBtn.length, 'Should enable:', shouldEnable);
+
+            if (shouldEnable) {
+                // ✅ FIX: Remove disabled và force CSS
+                createBtn.prop('disabled', false);
+                createBtn.removeAttr('disabled');
+
+                // Force inline CSS để override mọi rule khác
+                createBtn.css({
+                    'background': '#0068ff',
+                    'background-color': '#0068ff',
+                    'color': 'white',
+                    'cursor': 'pointer',
+                    'opacity': '1',
+                    'pointer-events': 'auto'
+                });
+
+                $('#selectedCount').html(`<span class="selected-count">Đã chọn: ${count} người</span>`);
+                console.log('✅ Button ENABLED with inline CSS');
+            } else {
+                // Disable button
+                createBtn.prop('disabled', true);
+                createBtn.attr('disabled', 'disabled');
+
+                // Force disabled CSS
+                createBtn.css({
+                    'background': '#d1d5db',
+                    'background-color': '#d1d5db',
+                    'color': '#9ca3af',
+                    'cursor': 'not-allowed',
+                    'opacity': '0.6'
+                });
+
+                console.log('❌ Button DISABLED');
+
+                if (count === 0) {
+                    $('#selectedCount').hide();
+                } else if (count === 1) {
+                    $('#selectedCount').html(`
+                    <span class="selected-count">Đã chọn: ${count}</span>
+                    <small style="color: #ef4444; display: block; margin-top: 4px; font-size: 11px;">
+                        <i class="fas fa-exclamation-circle"></i> Cần chọn thêm ít nhất 1 người nữa
+                    </small>
+                `);
+                } else if (count >= 2 && groupNameTrimmed.length === 0) {
+                    $('#selectedCount').html(`
+                    <span class="selected-count">Đã chọn: ${count}</span>
+                    <small style="color: #ef4444; display: block; margin-top: 4px; font-size: 11px;">
+                        <i class="fas fa-exclamation-circle"></i> Vui lòng nhập tên nhóm
+                    </small>
+                `);
+                }
+            }
+        };
+
+        // Create group
+        window.createGroup = function () {
+            const groupName = $('#groupName').val().trim();
+            const memberIds = Array.from(window.modalSelectedMembers);
+
+            console.log('📝 Creating group:', { groupName, memberIds });
+
+            if (!groupName) {
+                $('#groupName').focus();
+                return;
+            }
+
+            if (memberIds.length < 2) {
+                return;
+            }
+
+            const createBtn = $('#createGroupBtn');
+            const originalText = createBtn.html();
+            createBtn.html('<i class="fas fa-spinner fa-spin"></i> Đang tạo...').prop('disabled', true);
+
+            $.ajax({
+                url: '@Url.Action("CreateGroup", "Chat")',
+                type: 'POST',
+                data: {
+                    groupName: groupName,
+                    memberIds: memberIds,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function (response) {
+                    console.log('✅ Response:', response);
+
+                    if (response.success) {
+                        closeCreateGroupModal();
+
+                        if (response.conversationId) {
+                            window.location.href = '@Url.Action("Conversation", "Chat")?id=' + response.conversationId;
+                        } else {
+                            location.reload();
+                        }
+                    } else {
+                        createBtn.html(originalText).prop('disabled', false);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('❌ Error:', error);
+                    createBtn.html(originalText).prop('disabled', false);
+                }
+            });
+        };
+
+        // ✅ Event handlers - Chỉ bind 1 lần
+        $(document).on('input', '#searchMembers', function () {
+            const searchText = $(this).val().toLowerCase();
+            $('.member-item').each(function () {
+                const name = $(this).find('.member-name').text().toLowerCase();
+                const username = $(this).find('.member-username').text().toLowerCase();
+                if (name.includes(searchText) || username.includes(searchText)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        });
+
+        $(document).on('input', '#groupName', function () {
+            updateSelectedCount();
+        });
+
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape' && $('#createGroupModal').hasClass('show')) {
+                closeCreateGroupModal();
+            }
+        });
+
+        $(document).on('click', '#createGroupModal', function (e) {
+            if ($(e.target).hasClass('modal-overlay')) {
+                closeCreateGroupModal();
+            }
+        });
+
+        console.log('✅ Modal script initialized (ONE TIME ONLY)');
+    } else {
+        console.log('ℹ️ Modal script already initialized, skipping...');
+    }
+</script>

@@ -1,0 +1,377 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ChatApp</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Left Sidebar Navigation */
+        .left-sidebar {
+            width: 60px;
+            background: linear-gradient(180deg, #0068ff 0%, #0052cc 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .sidebar-logo {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .sidebar-logo:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .sidebar-logo i {
+            color: white;
+            font-size: 24px;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            align-items: center;
+        }
+
+        .nav-item {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+            position: relative;
+            text-decoration: none;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: -10px;
+            width: 4px;
+            height: 100%;
+            background: white;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .sidebar-footer {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Dropdown Menu */
+        .user-dropdown {
+            position: relative;
+        }
+
+        .dropdown-menu-custom {
+            position: absolute;
+            bottom: 50px;
+            left: 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            min-width: 200px;
+            padding: 8px 0;
+            display: none;
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.2s ease;
+        }
+
+        .user-dropdown.show .dropdown-menu-custom {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .dropdown-item-custom {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            color: #1f2937;
+            text-decoration: none;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .dropdown-item-custom i {
+            margin-right: 12px;
+            width: 20px;
+            font-size: 16px;
+            color: #6b7280;
+        }
+
+        .dropdown-item-custom:hover {
+            background: #f3f4f6;
+            color: #0068ff;
+        }
+
+        .dropdown-item-custom:hover i {
+            color: #0068ff;
+        }
+
+        .dropdown-divider-custom {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 8px 0;
+        }
+
+        .user-info-dropdown {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .user-info-name {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .user-info-username {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        /* Main Content Area */
+        .main-content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #f0f2f5;
+            overflow: hidden;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left Sidebar -->
+        <div class="left-sidebar">
+            <a href="@Url.Action("Index", "Chat")" class="sidebar-logo">
+                <i class="fas fa-comments"></i>
+            </a>
+
+            <div class="sidebar-nav">
+                <a href="@Url.Action("Index", "Chat")" class="nav-item active" title="Tin nhắn">
+                    <i class="fas fa-comment-dots"></i>
+                </a>
+                <a href="@Url.Action("Contacts", "User")" class="nav-item" title="Danh bạ">
+                    <i class="fas fa-address-book"></i>
+                </a>
+                <a href="@Url.Action("Friends", "User")" class="nav-item" title="Bạn bè">
+                    <i class="fas fa-user-friends"></i>
+                </a>
+                <a href="@Url.Action("Notifications", "User")" class="nav-item" title="Thông báo">
+                    <i class="fas fa-bell"></i>
+                </a>
+                <a href="@Url.Action("Cloud", "User")" class="nav-item" title="Cloud của tôi">
+                    <i class="fas fa-cloud"></i>
+                </a>
+            </div>
+
+            <div class="sidebar-footer">
+                <a href="@Url.Action("Settings", "User")" class="nav-item" title="Cài đặt">
+                    <i class="fas fa-cog"></i>
+                </a>
+                
+                <div class="user-dropdown">
+                    <div class="user-avatar" title="@ViewBag.CurrentUserFullName">
+                        @if (!string.IsNullOrEmpty(ViewBag.CurrentUserAvatar) && ViewBag.CurrentUserAvatar != "/images/default-avatar.png")
+                        {
+                            <img src="@ViewBag.CurrentUserAvatar" alt="Avatar">
+                        }
+                        else
+                        {
+                            <i class="fas fa-user" style="color: #0068ff;"></i>
+                        }
+                    </div>
+                    
+                    <div class="dropdown-menu-custom">
+                        @if (ViewBag.CurrentUserId != null && ViewBag.CurrentUserId > 0)
+                        {
+                            <div class="user-info-dropdown">
+                                <div class="user-info-name">@ViewBag.CurrentUserFullName</div>
+                                <div class="user-info-username">@("@" + ViewBag.CurrentUsername)</div>
+                            </div>
+                            <a href="@Url.Action("Profile", "User")" class="dropdown-item-custom">
+                                <i class="fas fa-user-circle"></i>
+                                <span>Trang cá nhân</span>
+                            </a>
+                            <a href="@Url.Action("Settings", "User")" class="dropdown-item-custom">
+                                <i class="fas fa-cog"></i>
+                                <span>Cài đặt</span>
+                            </a>
+                            <div class="dropdown-divider-custom"></div>
+                            <a href="@Url.Action("Logout", "Auth")" class="dropdown-item-custom">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Đăng xuất</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a href="@Url.Action("Login", "Auth")" class="dropdown-item-custom">
+                                <i class="fas fa-sign-in-alt"></i>
+                                <span>Đăng nhập</span>
+                            </a>
+                            <a href="@Url.Action("Register", "Auth")" class="dropdown-item-custom">
+                                <i class="fas fa-user-plus"></i>
+                                <span>Đăng ký</span>
+                            </a>
+                        
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area - This is where @RenderBody() will inject content -->
+        <div class="main-content-area">
+            @RenderBody()
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    
+    <script>
+        // Highlight active nav item based on current URL
+        document.addEventListener('DOMContentLoaded', function() {
+            const navItems = document.querySelectorAll('.nav-item');
+            const currentPath = window.location.pathname;
+            
+            navItems.forEach(item => {
+                const href = item.getAttribute('href');
+                if (href && currentPath.includes(href.split('/')[1])) {
+                    navItems.forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                }
+            });
+
+            // Toggle dropdown on avatar click
+            const userDropdown = document.querySelector('.user-dropdown');
+            const userAvatar = document.querySelector('.user-avatar');
+            
+            if (userAvatar && userDropdown) {
+                userAvatar.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    userDropdown.classList.toggle('show');
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!userDropdown.contains(e.target)) {
+                        userDropdown.classList.remove('show');
+                    }
+                });
+
+                // Prevent dropdown from closing when clicking inside
+                const dropdownMenu = document.querySelector('.dropdown-menu-custom');
+                if (dropdownMenu) {
+                    dropdownMenu.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                    });
+                }
+            }
+        });
+    </script>
+    <script src="~/js/chat.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

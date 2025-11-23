@@ -1,0 +1,436 @@
+﻿@model List<dynamic>
+
+<style>
+    .saved-messages-container {
+        padding: 20px;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .saved-messages-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .saved-messages-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: #1f2937;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .saved-messages-title i {
+        color: #0068ff;
+    }
+
+    .saved-messages-count {
+        background: #e0efff;
+        color: #0068ff;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .saved-message-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .saved-message-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-color: #d1d5db;
+    }
+
+    .saved-message-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .saved-message-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-right: 12px;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .saved-message-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .saved-message-avatar .default-avatar {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .saved-message-info {
+        flex: 1;
+    }
+
+    .saved-message-sender {
+        font-size: 15px;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 2px;
+    }
+
+    .saved-message-conversation {
+        font-size: 13px;
+        color: #6b7280;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .saved-message-conversation i {
+        font-size: 12px;
+    }
+
+    .saved-message-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .saved-message-action-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #f3f4f6;
+        color: #6b7280;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        font-size: 14px;
+    }
+
+    .saved-message-action-btn:hover {
+        background: #e5e7eb;
+        color: #1f2937;
+    }
+
+    .saved-message-action-btn.delete:hover {
+        background: #fee2e2;
+        color: #ef4444;
+    }
+
+    .saved-message-content {
+        padding: 12px 16px;
+        background: #f9fafb;
+        border-radius: 8px;
+        margin-bottom: 12px;
+    }
+
+    .saved-message-text {
+        font-size: 14px;
+        color: #1f2937;
+        line-height: 1.6;
+        margin-bottom: 8px;
+    }
+
+    .saved-message-note {
+        padding: 8px 12px;
+        background: #fef3c7;
+        border-left: 3px solid #f59e0b;
+        border-radius: 4px;
+        margin-top: 8px;
+    }
+
+    .saved-message-note-label {
+        font-size: 12px;
+        color: #92400e;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+
+    .saved-message-note-text {
+        font-size: 13px;
+        color: #78350f;
+        line-height: 1.5;
+    }
+
+    .saved-message-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #9ca3af;
+    }
+
+    .saved-message-date {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .saved-message-date i {
+        font-size: 11px;
+    }
+
+    .saved-message-link {
+        color: #0068ff;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .saved-message-link:hover {
+        color: #0052cc;
+        text-decoration: underline;
+    }
+
+    .empty-saved-messages {
+        text-align: center;
+        padding: 80px 20px;
+        color: #9ca3af;
+    }
+
+    .empty-saved-messages i {
+        font-size: 64px;
+        margin-bottom: 20px;
+        color: #d1d5db;
+    }
+
+    .empty-saved-messages h3 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #6b7280;
+        margin-bottom: 8px;
+    }
+
+    .empty-saved-messages p {
+        font-size: 14px;
+        color: #9ca3af;
+    }
+
+    .search-saved-messages {
+        margin-bottom: 20px;
+    }
+
+    .search-saved-messages input {
+        width: 100%;
+        padding: 12px 16px 12px 44px;
+        border: 1px solid #e5e7eb;
+        border-radius: 24px;
+        font-size: 14px;
+        outline: none;
+        transition: all 0.2s;
+    }
+
+    .search-saved-messages input:focus {
+        border-color: #0068ff;
+        box-shadow: 0 0 0 3px rgba(0, 104, 255, 0.1);
+    }
+
+    .search-saved-messages i {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+    }
+</style>
+
+<div class="saved-messages-container">
+    <div class="saved-messages-header">
+        <h2 class="saved-messages-title">
+            <i class="fas fa-bookmark"></i>
+            Tin nhắn đã lưu
+        </h2>
+        @if (Model != null && Model.Count > 0)
+        {
+            <span class="saved-messages-count">@Model.Count tin nhắn</span>
+        }
+    </div>
+
+    @if (Model != null && Model.Count > 0)
+    {
+        <div class="search-saved-messages" style="position: relative;">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchSavedMessages" placeholder="Tìm kiếm tin nhắn đã lưu...">
+        </div>
+
+        <div id="savedMessagesList">
+            @foreach (var saved in Model)
+            {
+                var savedId = saved.savedId;
+                var messageId = saved.messageId;
+                var messageText = saved.messageText;
+                var note = saved.note;
+                var savedAt = (DateTime)saved.savedAt;
+                var sender = saved.sender;
+                var conversation = saved.conversation;
+
+                var senderName = sender.fullName ?? "Unknown";
+                var senderAvatar = sender.avatar ?? "/images/default-avatar.png";
+                var conversationName = conversation.conversationName ?? "Conversation";
+                var isGroup = conversation.isGroup;
+
+                <div class="saved-message-card" data-saved-id="@savedId" data-message-id="@messageId">
+                    <div class="saved-message-header">
+                        <div class="saved-message-avatar">
+                            @if (!string.IsNullOrEmpty(senderAvatar) && senderAvatar != "/images/default-avatar.png")
+                            {
+                                <img src="@senderAvatar" alt="@senderName">
+                            }
+                            else
+                            {
+                                <div class="default-avatar">
+                                    @senderName.Substring(0, 1).ToUpper()
+                                </div>
+                            }
+                        </div>
+
+                        <div class="saved-message-info">
+                            <div class="saved-message-sender">@senderName</div>
+                            <div class="saved-message-conversation">
+                                <i class="fas @(isGroup ? "fa-users" : "fa-user")"></i>
+                                <span>@conversationName</span>
+                            </div>
+                        </div>
+
+                        <div class="saved-message-actions">
+                            <button class="saved-message-action-btn"
+                                    title="Xem tin nhắn"
+                                    onclick="goToMessage(@conversation.conversationId, @messageId)">
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
+                            <button class="saved-message-action-btn delete"
+                                    title="Bỏ lưu"
+                                    onclick="unsaveMessage(@messageId, @savedId)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="saved-message-content">
+                        <div class="saved-message-text">
+                            @messageText
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(note))
+                        {
+                            <div class="saved-message-note">
+                                <div class="saved-message-note-label">
+                                    <i class="fas fa-sticky-note"></i> Ghi chú:
+                                </div>
+                                <div class="saved-message-note-text">@note</div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="saved-message-footer">
+                        <div class="saved-message-date">
+                            <i class="fas fa-bookmark"></i>
+                            <span>Đã lưu: @savedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                        <a href="@Url.Action("Conversation", "Chat", new { id = conversation.conversationId })#message-@messageId"
+                           class="saved-message-link">
+                            Xem trong hội thoại
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="empty-saved-messages">
+            <i class="fas fa-bookmark"></i>
+            <h3>Chưa có tin nhắn nào được lưu</h3>
+            <p>Nhấn vào biểu tượng bookmark trên tin nhắn để lưu lại</p>
+            <p style="margin-top: 8px; font-size: 13px;">Tin nhắn đã lưu sẽ giúp bạn dễ dàng tìm lại thông tin quan trọng</p>
+        </div>
+    }
+</div>
+
+<script>
+    // Search saved messages
+    $('#searchSavedMessages').on('input', function() {
+        const searchText = $(this).val().toLowerCase();
+
+        $('.saved-message-card').each(function() {
+            const messageText = $(this).find('.saved-message-text').text().toLowerCase();
+            const senderName = $(this).find('.saved-message-sender').text().toLowerCase();
+            const note = $(this).find('.saved-message-note-text').text().toLowerCase();
+
+            if (messageText.includes(searchText) ||
+                senderName.includes(searchText) ||
+                note.includes(searchText)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+
+    // Go to message in conversation
+    function goToMessage(conversationId, messageId) {
+        window.location.href = `/Chat/Conversation/${conversationId}#message-${messageId}`;
+    }
+
+    // Unsave message
+    function unsaveMessage(messageId, savedId) {
+        if (!confirm('Bạn có chắc muốn bỏ lưu tin nhắn này?')) return;
+
+        $.ajax({
+            url: '/Chat/UnsaveMessage',
+            type: 'POST',
+            data: {
+                messageId: messageId,
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Remove from UI
+                    $(`.saved-message-card[data-saved-id="${savedId}"]`).fadeOut(300, function() {
+                        $(this).remove();
+
+                        // Check if empty
+                        if ($('.saved-message-card:visible').length === 0) {
+                            location.reload();
+                        } else {
+                            // Update count
+                            const count = $('.saved-message-card:visible').length;
+                            $('.saved-messages-count').text(`${count} tin nhắn`);
+                        }
+                    });
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function() {
+                alert('Có lỗi xảy ra!');
+            }
+        });
+    }
+</script>
