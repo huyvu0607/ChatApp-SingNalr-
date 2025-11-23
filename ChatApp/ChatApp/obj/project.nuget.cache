@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "dviT7J9nPkY=",
+  "dgSpecHash": "X9rprD7z9UU=",
   "success": true,
-  "projectFilePath": "D:\\Dự Án riêng\\ChatApp\\ChatApp\\ChatApp.csproj",
+  "projectFilePath": "D:\\Dự Án riêng\\ChatApp(SingNalr)\\ChatApp-SingNalr-\\ChatApp\\ChatApp\\ChatApp.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Huywill\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",
     "C:\\Users\\Huywill\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",
